@@ -24,4 +24,20 @@ class TranscriptionsController < ApplicationController
       render json: {error: "no audio"}, status: 400
     end
   end
+
+  def show
+    @transcription = Transcription.find(params[:id])
+  end
+
+  def summary
+    @transcription = Transcription.find(params[:id])
+    if @transcription.summary_text.present?
+      render json: {summary: @transcription.summary_text}
+    else
+      @transcription.update(status: "processing")
+      summary = SummarizeService.summarize(@transcription.raw_text)
+      @transcription.update(summary_text: summary, status: "done")
+      render json: {summary: summary}
+    end
+  end
 end
