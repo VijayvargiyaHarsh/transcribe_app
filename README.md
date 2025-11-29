@@ -1,24 +1,24 @@
-# README
+# Voice Transcription & Summarization (Rails 7, Postgres)
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+## Setup (local)
 
-Things you may want to cover:
+1. Ruby version: 3.1.x recommended
+2. Ensure PostgreSQL is running and you have a DB user.
+Clone repository:
+```bash
+git clone git@github.com:VijayvargiyaHarsh/voice_transcribe.git
+cd voice_transcribe
 
-* Ruby version
 
-* System dependencies
+3. Install gems
+bundle install
 
-* Configuration
+4.Setup env variables create .env
+OPENAI_API_KEY=sk-...
 
-* Database creation
+5. Create DB
+rails db:create db:migrate
 
-* Database initialization
+6. Start server
 
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+7. Visit: http://localhost:3000/transcribe
