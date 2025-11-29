@@ -1,0 +1,109 @@
+<h1>Voice Transcription</h1>
+
+<div id="controls">
+  <button id="startBtn">Start Listening</button>
+  <button id="stopBtn" disabled>Stop Listening</button>
+</div>
+
+<div id="liveTranscript">
+  <h3>Live transcription</h3>
+  <div id="liveText">—</div>
+</div>
+
+<div id="fullTranscript" style="display:none">
+  <h3>Full transcription</h3>
+  <pre id="fullText"></pre>
+  <button id="getSummaryBtn">Generate Summary</button>
+  <h4>Summary</h4>
+  <div id="summaryText"></div>
+</div>
+
+<script type="module">
+  let mediaRecorder;
+  let audioChunks = [];
+
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const liveText = document.getElementById("liveText");
+  const fullTranscriptDiv = document.getElementById("fullTranscript");
+  const fullText = document.getElementById("fullText");
+  const getSummaryBtn = document.getElementById("getSummaryBtn");
+  const summaryText = document.getElementById("summaryText");
+
+  startBtn.addEventListener("click", async () => {
+    audioChunks = [];
+    summaryText.innerText = "";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Your browser does not support microphone access.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstart = () => {
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        liveText.innerText = "Listening… (live transcript not available with this simple demo — sent to server after stop)";
+      };
+      mediaRecorder.start();
+    } catch (err) {
+      alert("Microphone permission denied or error: " + err.message);
+    }
+  });
+
+  stopBtn.addEventListener("click", async () => {
+    stopBtn.disabled = true;
+    startBtn.disabled = false;
+    mediaRecorder.stop();
+
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    const formData = new FormData();
+    formData.append('audio', blob, 'recording.webm');
+
+    liveText.innerText = "Uploading audio…";
+
+    try {
+      const resp = await fetch("/transcriptions", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+        }
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        fullText.innerText = data.raw_text || data.raw_text || data.raw_text;
+        fullTranscriptDiv.style.display = "block";
+        liveText.innerText = "Upload complete.";
+      } else {
+        liveText.innerText = "Error: " + JSON.stringify(data);
+      }
+    } catch (e) {
+      liveText.innerText = "Upload failed.";
+      console.error(e);
+    }
+  });
+
+  getSummaryBtn.addEventListener("click", async () => {
+    const id = window.location.pathname.match(/\/transcriptions\/(\d+)/)?.[1];
+    let url = null;
+    if (id) {
+      url = `/transcriptions/${id}/summary`;
+    } else {
+      alert("No transcription id found. Please use show page flow.");
+      return;
+    }
+    summaryText.innerHTML = "Generating summary…";
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (resp.ok) {
+      summaryText.innerText = data.summary;
+    } else {
+      summaryText.innerText = "Error generating summary.";
+      console.error(data);
+    }
+  });
+</script>
